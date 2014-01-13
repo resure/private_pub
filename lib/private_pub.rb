@@ -2,6 +2,7 @@ require "digest/sha1"
 require "net/http"
 require "net/https"
 require "yaml"
+require "erb"
 
 require "private_pub/faye_extension"
 require "private_pub/engine" if defined? Rails
@@ -22,7 +23,14 @@ module PrivatePub
       raw_config = ERB.new(File.read(filename)).result
       yaml = YAML.load(raw_config)[environment.to_s]
       raise ArgumentError, "The #{environment} environment does not exist in #{filename}" if yaml.nil?
-      yaml.each { |k, v| config[k.to_sym] = v }
+
+      if yaml['faye']
+        # Reading faye config from Rails >= 4.1 secrets.yml
+        yaml['faye'].each { |k, v| config[k.to_sym] = v }
+      else
+        yaml.each { |k, v| config[k.to_sym] = v }
+      end
+
       config[:signature_expiration] = config[:signature_expiration].to_i if config[:signature_expiration] && !config[:signature_expiration].is_a?(Integer)
     end
 
